@@ -109,16 +109,27 @@ def generate_workflow(payload: GenerateRequest) -> WorkflowData:
         )
         edges.append({"id": "edge_end_1", "source": last["id"], "target": end_id})
 
-    # Ensure there is at least a simple path connecting nodes if edges are missing
-    if nodes and not edges:
-        for idx in range(len(nodes) - 1):
-            edges.append(
-                {
-                    "id": f"edge_{idx + 1}",
-                    "source": nodes[idx]["id"],
-                    "target": nodes[idx + 1]["id"],
-                }
-            )
+    # Ensure there is at least a simple path connecting nodes if edges are missing or disconnected
+    if nodes:
+        incoming = {node["id"]: 0 for node in nodes}
+        for edge in edges:
+            target = edge.get("target")
+            if target in incoming:
+                incoming[target] += 1
+
+        edge_counter = len(edges)
+        for idx in range(1, len(nodes)):
+            node_id = nodes[idx]["id"]
+            if incoming.get(node_id, 0) == 0:
+                edge_counter += 1
+                edges.append(
+                    {
+                        "id": f"edge_{edge_counter}",
+                        "source": nodes[idx - 1]["id"],
+                        "target": node_id,
+                    }
+                )
+                incoming[node_id] = 1
 
     # Normalize positions to a tidy horizontal flow
     for idx, node in enumerate(nodes):
